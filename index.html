@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>مطب دکتر هوشمند 🩺</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #0f7fa8;
+    --primary-dark: #0b6385;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1e293b;
+    --border: #cbd5e1;
+    --success: #059669;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --neuron: #8b5cf6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    background: var(--bg); color: var(--text);
+    height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
+  }
+
+  /* ---------- هدر ---------- */
+  .header {
+    background: var(--card); padding: 10px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10;
+  }
+  .header-title { font-weight: 800; color: var(--primary); font-size: 15px; }
+  .header-stats { display: flex; gap: 8px; }
+  .stat-badge { background: #e0f2fe; color: var(--primary-dark); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+
+  /* ---------- بدنه اصلی (تصویر) ---------- */
+  .main-stage {
+    flex: 1; position: relative; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 10px; overflow: hidden;
+  }
+  
+  .patient-info {
+    background: var(--card); border-radius: 12px; padding: 12px;
+    width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    display: flex; gap: 12px; align-items: center; margin-bottom: 10px; z-index: 2;
+  }
+  .avatar { width: 45px; height: 45px; border-radius: 50%; background: #e0f2fe; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .p-name { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+  .p-complaint { font-size: 12.5px; color: #475569; line-height: 1.6; }
+
+  /* ---------- SVG ---------- */
+  .svg-container {
+    width: 100%; flex: 1; max-height: 50vh; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    position: relative;
+  }
+  .body-svg { height: 100%; width: auto; max-width: 100%; }
+  
+  .organ { cursor: pointer; transition: all 0.2s; }
+  .organ:hover { filter: brightness(1.1) drop-shadow(0 0 6px rgba(15,127,168,0.6)); }
+  .organ.active { filter: drop-shadow(0 0 8px #f59e0b) brightness(1.1); }
+  
+  .instruction-hint {
+    font-size: 11px; color: #64748b; margin-top: 8px; text-align: center; background: #e2e8f0; padding: 4px 12px; border-radius: 20px;
+  }
+
+  /* برچسب‌های شناور برای نتیجه معاینه */
+  .exam-result-toast {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: var(--card); padding: 10px 16px; border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15); font-size: 13px; font-weight: 600;
+    width: 90%; max-width: 400px; text-align: center; z-index: 20;
+    border-right: 4px solid var(--warning);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s;
+  }
+  .exam-result-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .exam-result-toast.is-normal { border-right-color: var(--success); }
+
+  /* ---------- نوار پایین (دکمه‌ها) ---------- */
+  .bottom-nav {
+    background: var(--card); padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+    display: flex; gap: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10;
+  }
+  .nav-btn {
+    flex: 1; padding: 10px 4px; border-radius: 10px; border: none; font-family: inherit;
+    font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;
+    transition: 0.2s; flex-direction: column;
+  }
+  .nav-btn .icon { font-size: 18px; }
+  .nav-btn.btn-chat { background: #e0f2fe; color: var(--primary-dark); }
+  .nav-btn.btn-diag { background: #fef3c7; color: var(--warning); }
+  .nav-btn.btn-neuron { background: #ede9fe; color: var(--neuron); }
+  .nav-btn:active { transform: scale(0.98); }
+
+  /* ---------- مودال‌ها (پنجره‌های بازشونده از پایین) ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(2px);
+    display: none; align-items: flex-end; justify-content: center; z-index: 100;
+  }
+  .overlay.show { display: flex; }
+  
+  .sheet {
+    background: var(--card); width: 100%; max-width: 600px;
+    border-radius: 24px 24px 0 0; padding: 20px;
+    max-height: 85vh; display: flex; flex-direction: column;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  
+  .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .sheet-title { font-weight: 800; font-size: 16px; color: var(--primary); }
+  .close-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 16px; cursor: pointer; color: #64748b; }
+
+  /* لیست سوالات */
+  .q-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px; }
+  .q-btn {
+    text-align: right; font-family: inherit; font-size: 13px; padding: 12px;
+    border-radius: 10px; border: 1px solid var(--border); background: #f8fafc;
+    color: var(--text); cursor: pointer; transition: 0.2s;
+  }
+  .q-btn:active { background: #e2e8f0; }
+  .q-btn:disabled { opacity: 0.5; background: #f1f5f9; border-color: transparent; }
+  
+  .chat-bubble { background: #e0f2fe; padding: 10px 14px; border-radius: 12px 12px 0 12px; font-size: 13px; color: #0369a1; margin-top: 8px; line-height: 1.6; }
+
+  /* لیست تشخیص */
+  .diag-grid { display: flex; flex-direction: column; gap: 10px; }
+  .diag-btn {
+    text-align: center; font-family: inherit; font-size: 14px; font-weight: 700;
+    padding: 14px; border-radius: 12px; border: 2px solid #fcd34d; background: #fffbeb;
+    color: #92400e; cursor: pointer; transition: 0.2s;
+  }
+  .diag-btn.correct { background: #d1fae5; border-color: #059669; color: #065f46; }
+  .diag-btn.wrong { background: #fee2e2; border-color: #ef4444; color: #991b1b; text-decoration: line-through; opacity: 0.6; }
+
+  /* نتیجه نهایی */
+  .result-box { text-align: center; padding: 20px 10px; }
+  .result-box h2 { color: var(--success); font-size: 18px; margin-bottom: 10px; }
+  .result-box p { font-size: 13.5px; line-height: 1.8; color: #334155; margin-bottom: 15px; }
+  
+  .btn-primary {
+    background: linear-gradient(145deg, #0ea5e9, #0284c7); color: #fff;
+    border: none; padding: 12px 24px; border-radius: 12px; width: 100%;
+    font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(14,165,233,0.3);
+  }
+
+  /* فوتر طراح */
+  .designer-credit {
+    text-align: center; font-size: 10px; color: #94a3b8; background: var(--card);
+    padding: 4px; border-top: 1px solid #e2e8f0;
+  }
+
+  /* راهنمای شروع بازی */
+  .intro-modal {
+    background: var(--card); border-radius: 20px; padding: 24px;
+    width: 90%; max-width: 400px; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: pop 0.3s ease;
+    margin: auto; position: relative;
+  }
+  @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .intro-modal h2 { color: var(--primary); margin-bottom: 12px; font-size: 20px; }
+  .intro-modal p { font-size: 13.5px; color: #475569; line-height: 1.8; margin-bottom: 20px; text-align: right; }
+  .intro-modal ul { padding-right: 20px; margin-bottom: 20px; text-align: right; font-size: 13px; color: #334155; line-height: 2; }
+
+  /* --- استایل‌های مخصوص نورون --- */
+  .neuron-container { text-align: center; padding: 10px 0; }
+  .neuron-svg { width: 100%; max-width: 320px; margin: 0 auto; overflow: visible; }
+  .neuron-info-box {
+    background: #f8fafc; border-radius: 12px; padding: 12px; 
+    margin-top: 15px; font-size: 13px; line-height: 1.7; color: #334155;
+    min-height: 80px; border: 1px solid #e2e8f0; text-align: right;
+  }
+  .neuron-part { cursor: pointer; transition: 0.2s; }
+  .neuron-part:hover { filter: brightness(1.2) drop-shadow(0 0 5px rgba(139, 92, 246, 0.5)); }
+</style>
+</head>
+<body>
+
+<!-- هدر -->
+<div class="header">
+  <div class="header-title">🩺 دکتر هوشمند</div>
+  <div class="header-stats">
+    <div class="stat-badge">بیمار <span id="caseNum">۱</span>/<span id="caseTotal">۶</span></div>
+    <div class="stat-badge">⭐ <span id="score">۰</span></div>
+  </div>
+</div>
+
+<!-- بدنه اصلی -->
+<div class="main-stage">
+  <!-- کارت بیمار -->
+  <div class="patient-info">
+    <div class="avatar" id="pAvatar">🧑</div>
+    <div style="flex:1">
+      <div class="p-name" id="pName">—</div>
+      <div class="p-complaint" id="pComplaint">—</div>
+    </div>
+  </div>
+
+  <!-- تصویر آناتومی -->
+  <div class="svg-container">
+    <svg viewBox="0 0 380 580" id="bodySvg" class="body-svg" xmlns="http://www.w3.org/2000/svg">
+      <!-- بدن انسان -->
+      <g fill="#f8fafc" stroke="#cbd5e1" stroke-width="2">
+        <ellipse cx="180" cy="90" rx="65" ry="75"/>
+        <rect x="158" y="150" width="44" height="40" rx="12"/>
+        <rect x="106" y="186" width="148" height="230" rx="40"/>
+        <rect x="78" y="202" width="26" height="180" rx="13"/>
+        <rect x="256" y="202" width="26" height="180" rx="13"/>
+        <rect x="124" y="416" width="46" height="140" rx="23"/>
+        <rect x="190" y="416" width="46" height="140" rx="23"/>
+      </g>
+
+      <!-- اعصاب محیطی -->
+      <g class="organ" data-organ="nerves" pointer-events="all">
+        <g fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round">
+          <path d="M176 210 L128 224 L96 270 L88 310"/>
+          <path d="M184 210 L232 224 L264 270 L272 310"/>
+          <path d="M176 270 L138 300 L112 350"/>
+          <path d="M184 270 L222 300 L248 350"/>
+          <path d="M176 340 L146 400 L136 480 L132 520"/>
+          <path d="M184 340 L214 400 L224 480 L228 520"/>
+        </g>
+        <!-- ناحیه کلیک بزرگتر برای اعصاب -->
+        <g fill="none" stroke="transparent" stroke-width="30" stroke-linecap="round" pointer-events="stroke">
+          <path d="M176 210 L128 224 L96 270 L88 310"/>
+          <path d="M184 210 L232 224 L264 270 L272 310"/>
+          <path d="M176 270 L138 300 L112 350"/>
+          <path d="M184 270 L222 300 L248 350"/>
+        </g>
+      </g>
+
+      <!-- نخاع -->
+      <g class="organ" data-organ="cord" pointer-events="all">
+        <rect x="172" y="165" width="16" height="205" rx="8" fill="#eab308" stroke="#ca8a04" stroke-width="2"/>
+        <!-- ناحیه کلیک بزرگتر -->
+        <rect x="150" y="165" width="60" height="205" fill="transparent" pointer-events="all"/>
+      </g>
+
+      <!-- بصل النخاع -->
+      <g class="organ" data-organ="medulla" pointer-events="all">
+        <rect x="169" y="115" width="22" height="50" rx="10" fill="#f97316" stroke="#ea580c" stroke-width="2"/>
+        <!-- ناحیه کلیک بزرگتر -->
+        <rect x="150" y="110" width="60" height="60" fill="transparent" pointer-events="all"/>
+      </g>
+
+      <!-- مخ (بزرگ و بالاتر) -->
+      <g class="organ" data-organ="cerebrum" pointer-events="all">
+        <path d="M180 20 C240 20 255 65 245 100 C238 115 210 120 180 120 C150 120 122 115 115 100 C105 65 120 20 180 20 Z" fill="#fb7185" stroke="#e11d48" stroke-width="2.5"/>
+        <path d="M180 25 L180 115" stroke="rgba(255,255,255,0.4)" stroke-width="2" fill="none"/>
+        <path d="M140 40 C130 65 135 95 145 110" stroke="rgba(255,255,255,0.4)" stroke-width="2" fill="none"/>
+        <path d="M220 40 C230 65 225 95 215 110" stroke="rgba(255,255,255,0.4)" stroke-width="2" fill="none"/>
+      </g>
+
+      <!-- مخچه (جابه‌جا شده به سمت چپ و راستای نخاع) -->
+      <g class="organ" data-organ="cerebellum" pointer-events="all">
+        <ellipse cx="195" cy="125" rx="28" ry="18" fill="#a855f7" stroke="#7e22ce" stroke-width="2"/>
+        <path d="M172 120 Q195 108 218 120 M172 130 Q195 118 218 130" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none"/>
+        <!-- ناحیه کلیک فوق العاده بزرگ برای مخچه -->
+        <ellipse cx="195" cy="125" rx="40" ry="30" fill="transparent" pointer-events="all"/>
+      </g>
+    </svg>
+    <div class="instruction-hint">👆 برای معاینه، روی اندام‌ها کلیک کنید</div>
+    
+    <!-- پیام شناور نتیجه معاینه -->
+    <div class="exam-result-toast" id="examToast"></div>
+  </div>
+</div>
+
+<!-- نوار پایین -->
+<div class="bottom-nav">
+  <button class="nav-btn btn-chat" onclick="openSheet('chatSheet')">
+    <span class="icon">💬</span> مصاحبه
+  </button>
+  <button class="nav-btn btn-diag" onclick="openSheet('diagSheet')">
+    <span class="icon">🎯</span> تشخیص
+  </button>
+  <button class="nav-btn btn-neuron" onclick="openSheet('neuronSheet')">
+    <span class="icon">🔬</span> نورون
+  </button>
+</div>
+
+<!-- فوتر -->
+<div class="designer-credit">طراحی و توسعه: مهندس رحمانی</div>
+
+<!-- مودال مصاحبه (سوال و جواب) -->
+<div class="overlay" id="chatSheet" onclick="closeSheet(event)">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-header">
+      <div class="sheet-title">💬 پرسش از بیمار</div>
+      <button class="close-btn" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="q-list" id="qList"></div>
+  </div>
+</div>
+
+<!-- مودال تشخیص -->
+<div class="overlay" id="diagSheet" onclick="closeSheet(event)">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-header">
+      <div class="sheet-title">🎯 انتخاب تشخیص</div>
+      <button class="close-btn" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="diag-grid" id="diagGrid"></div>
+  </div>
+</div>
+
+<!-- مودال نورون (آموزشی) -->
+<div class="overlay" id="neuronSheet" onclick="closeSheet(event)">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-header">
+      <div class="sheet-title">🔬 ساختار نورون (یاخته عصبی)</div>
+      <button class="close-btn" onclick="closeSheet()">✕</button>
+    </div>
+    
+    <div class="neuron-container">
+      <!-- رسم نورون با موقعیت‌دهی صحیح برچسب‌ها -->
+      <svg viewBox="0 0 340 220" class="neuron-svg" xmlns="http://www.w3.org/2000/svg">
+        <!-- دارینه‌ها (Dendrites) -->
+        <g class="neuron-part" data-part="dendrite">
+          <path d="M90 100 Q60 50 40 40 M90 100 Q50 80 30 80 M90 100 Q50 130 30 150 M90 100 Q70 160 50 180" fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/>
+          <path d="M90 100 Q60 50 40 40 M90 100 Q50 80 30 80 M90 100 Q50 130 30 150 M90 100 Q70 160 50 180" fill="none" stroke="transparent" stroke-width="20" stroke-linecap="round" pointer-events="stroke"/>
+        </g>
+        
+        <!-- جسم یاخته‌ای (Cell Body / Soma) -->
+        <g class="neuron-part" data-part="soma">
+          <circle cx="125" cy="100" r="38" fill="#fcd34d" stroke="#f59e0b" stroke-width="3"/>
+          <circle cx="125" cy="100" r="14" fill="#b45309" opacity="0.6"/>
+          <circle cx="125" cy="100" r="48" fill="transparent"/>
+        </g>
+        
+        <!-- آسه (Axon) -->
+        <g class="neuron-part" data-part="axon">
+          <path d="M163 100 L270 100" fill="none" stroke="#a78bfa" stroke-width="8" stroke-linecap="round"/>
+          <rect x="180" y="92" width="16" height="16" fill="#c4b5fd" rx="4"/>
+          <rect x="210" y="92" width="16" height="16" fill="#c4b5fd" rx="4"/>
+          <rect x="240" y="92" width="16" height="16" fill="#c4b5fd" rx="4"/>
+          <path d="M163 100 L270 100" fill="none" stroke="transparent" stroke-width="28" stroke-linecap="round" pointer-events="stroke"/>
+        </g>
+        
+        <!-- پایانه‌های آسه (Axon Terminals) -->
+        <g fill="none" stroke="#a78bfa" stroke-width="4" stroke-linecap="round">
+          <path d="M270 100 L295 80 M270 100 L295 100 M270 100 L295 120"/>
+        </g>
+        
+        <!-- برچسب‌ها (با موقعیت دقیق و text-anchor) -->
+        <text x="60" y="200" text-anchor="middle" font-family="Vazirmatn" font-size="13" fill="#0ea5e9" font-weight="bold">دارینه</text>
+        <text x="125" y="165" text-anchor="middle" font-family="Vazirmatn" font-size="13" fill="#d97706" font-weight="bold">جسم یاخته‌ای</text>
+        <text x="220" y="80" text-anchor="middle" font-family="Vazirmatn" font-size="13" fill="#8b5cf6" font-weight="bold">آسه</text>
+      </svg>
+      
+      <div class="neuron-info-box" id="neuronInfo">
+        👆 روی هر بخش از نورون (دارینه، جسم یاخته‌ای، آسه) کلیک کنید تا کارکرد آن را ببینید.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- مودال نتیجه نهایی -->
+<div class="overlay" id="resultSheet">
+  <div class="sheet" style="text-align:center;">
+    <div class="result-box">
+      <h2 id="resTitle">—</h2>
+      <p id="resText"></p>
+      <button class="btn-primary" id="nextBtn">بیمار بعدی ←</button>
+    </div>
+  </div>
+</div>
+
+<!-- مودال شروع و توضیحات -->
+<div class="overlay show" id="introSheet" style="align-items:center;">
+  <div class="intro-modal">
+    <h2>🩺 خوش آمدید، دکتر!</h2>
+    <p>بیماران یکی‌یکی وارد مطب می‌شوند. شما باید با دقت به شکایت آن‌ها گوش دهید و با انجام مراحل زیر علت بیماری را پیدا کنید:</p>
+    <ul>
+      <li><b>۱. مصاحبه:</b> با کلیک روی دکمه پایین، از بیمار سوال بپرسید.</li>
+      <li><b>۲. معاینه:</b> روی اندام‌های بدن (مخ، مخچه، نخاع و...) در تصویر کلیک کنید.</li>
+      <li><b>۳. تشخیص:</b> اندام معیوب را انتخاب کنید.</li>
+      <li><b>🔬 نورون:</b> با این دکمه می‌توانید ساختار یک یاخته عصبی را بررسی کنید.</li>
+    </ul>
+    <p style="font-size:12px; color:#64748b; margin-bottom:15px;">هرچه کمتر معاینه کنید و درست‌تر تشخیص دهید، امتیاز بالاتری می‌گیرید.</p>
+    <button class="btn-primary" onclick="startGame()">شروع معاینه 🚀</button>
+  </div>
+</div>
+
+<script>
+  /* ================== داده‌ها ================== */
+  const ORGANS = { cerebrum: 'مخ', cerebellum: 'مخچه', medulla: 'بصل النخاع', cord: 'نخاع', nerves: 'اعصاب محیطی' };
+  const NORMAL = {
+    cerebrum: 'حافظه، تکلم و حرکات ارادی طبیعی است.',
+    cerebellum: 'تعادل و هماهنگی حرکات طبیعی است.',
+    medulla: 'ضربان قلب و تنفس منظم و طبیعی است.',
+    cord: 'حس و حرکت اندام‌ها و بازتاب‌های نخاعی سالم است.',
+    nerves: 'حس و قدرت اندام‌ها طبیعی است؛ نشانه‌ای از آسیب عصب دیده نمی‌شود.'
+  };
+
+  const CASES = [
+    {
+      name:'سارا احمدی', meta:'۲۴ ساله • سرگیجه', avatar:'👩',
+      complaint:'چند روزه وقتی راه می‌رم حس می‌کنم تعادلم رو از دست می‌دم و سرم گیج می‌ره.',
+      questions:[
+        {q:'از کی این حالت شروع شد؟', a:'حدود یک هفته پیش، بعد از یک سرماخوردگی.'},
+        {q:'وقتی می‌ایستی اتاق دور سرت می‌چرخه؟', a:'نه، بیشتر وقتی راه می‌رم تلوتلو می‌خورم.'},
+        {q:'قدرت دست و پاهات چطوره؟', a:'قوتم خوبه، فقط حرکاتم دقیق نیست.'},
+        {q:'حافظه یا حرف زدنت مشکلی پیدا کرده؟', a:'نه، همه‌چیز رو خوب به یاد می‌آرم.'}
+      ],
+      exams:{ cerebellum:{t:'بیمار تلوتلو می‌خورد. هماهنگی حرکات مختل شده است.', ab:true} },
+      options:['مخ', 'مخچه', 'بصل النخاع', 'نخاع'],
+      correct:'مخچه',
+      explain:'مخچه در پایین و پشت مخ قرار دارد و مرکز «تعادل» و «هماهنگی حرکات» است.'
+    },
+    {
+      name:'آقای کریمی', meta:'۵۵ ساله • ضربان نامنظم', avatar:'👨‍🦳',
+      complaint:'از دیشب قلبم نامنظم می‌زنه و نفسم بند می‌آد.',
+      questions:[
+        {q:'الان احساس تنگی نفس داری؟', a:'بله، مخصوصاً وقتی دراز می‌کشم.'},
+        {q:'دست و پاهات ضعف دارن؟', a:'نه، می‌تونم راه برم.'},
+        {q:'سرگیجه داری؟', a:'کمی سبک سرم، ولی تعادلم رو از دست نمی‌دم.'},
+        {q:'سابقه فشار خون داشتی؟', a:'بله، فشار خونم بالا بوده.'}
+      ],
+      exams:{ medulla:{t:'ضربان قلب نامنظم، تنفس سطحی. مرکز تنظیم تنفس و قلب مختل شده.', ab:true} },
+      options:['مخ', 'مخچه', 'بصل النخاع', 'اعصاب محیطی'],
+      correct:'بصل النخاع',
+      explain:'بصل النخاع مرکز تنظیم «تنفس»، «ضربان قلب» و «فشار خون» است.'
+    },
+    {
+      name:'امیر', meta:'۱۶ ساله • سقوط از نردبان', avatar:'🧑',
+      complaint:'بعد از سقوط، پاهام دیگه حرکت نمی‌کنه و حس هم ندارن.',
+      questions:[
+        {q:'کجای کمرت ضربه خورد؟', a:'وسط کمرم، روی ستون فقرات.'},
+        {q:'می‌تونی پاهات رو حرکت بدی؟', a:'نه، اصلاً.'},
+        {q:'حس پاهات چطوره؟', a:'وقتی لمس می‌کنن چیزی حس نمی‌کنم.'},
+        {q:'دست‌ها و سرت مشکلی ندارن؟', a:'نه، دست‌هام خوبن.'}
+      ],
+      exams:{
+        cord:{t:'حس و حرکت پاها از بین رفته است. مسیر ارتباط مغز با پاها قطع شده.', ab:true},
+        nerves:{t:'اعصاب بازوها سالم است؛ اما پیام‌های عصبی به پاها نمی‌رسند.'}
+      },
+      options:['مخ', 'مخچه', 'نخاع', 'اعصاب محیطی'],
+      correct:'نخاع',
+      explain:'نخاع پیام‌های عصبی را بین مغز و اندام‌ها جابه‌جا می‌کند. آسیب آن باعث از بین رفتن حس و حرکت اندام‌های پایین‌تر می‌شود.'
+    },
+    {
+      name:'خانم نوری', meta:'۴۰ ساله • بی‌حسی انگشتان', avatar:'👩‍🦰',
+      complaint:'دو هفته پیش آرنجم محکم به میز خورد. از اون موقع دو انگشت دستم بی‌حس شده.',
+      questions:[
+        {q:'بی‌حسی فقط در دست است؟', a:'فقط در دو انگشت همین دست.'},
+        {q:'می‌تونی مشت ببندی؟', a:'بله، ولی انگشت‌هام ضعیف‌تر شده.'},
+        {q:'گردنت درد می‌کنه؟', a:'نه، هیچ دردی ندارم.'},
+        {q:'تعادل یا حافظه‌ات تغییری کرده؟', a:'نه، همه‌چیز مثل قبله.'}
+      ],
+      exams:{ nerves:{t:'در مسیر عصب بازو، حس لمس کاهش یافته است. عصب محیطی آسیب دیده.', ab:true} },
+      options:['مخ', 'نخاع', 'اعصاب محیطی', 'مخچه'],
+      correct:'اعصاب محیطی',
+      explain:'اعصاب محیطی پیام‌ها را بین دستگاه عصبی مرکزی و اندام‌ها جابه‌جا می‌کنند. آسیب عصب باعث بی‌حسی و ضعف می‌شود.'
+    },
+    {
+      name:'آقای موسوی', meta:'۶۸ ساله • فراموشی', avatar:'👴',
+      complaint:'همسرم می‌گه حرف‌هام نامفهوم شده و گاهی یادم می‌ره کلید رو کجا گذاشتم.',
+      questions:[
+        {q:'از کی مشکل شروع شد؟', a:'حدود سه هفته پیش.'},
+        {q:'قدرت دست و پاهات چطوره؟', a:'خوبم، راه می‌رم.'},
+        {q:'تعادلت رو از دست می‌دی؟', a:'نه، سرگیجه هم ندارم.'},
+        {q:'تنفست یا ضربان قلبت مشکلی نداره؟', a:'نه، نفس و قلبم خوب کار می‌کنه.'}
+      ],
+      exams:{ cerebrum:{t:'بیمار در نام‌بردن اشیا مشکل دارد؛ تکلم کند و حافظه اخیر ضعیف است.', ab:true} },
+      options:['مخ', 'مخچه', 'بصل النخاع', 'نخاع'],
+      correct:'مخ',
+      explain:'مخ بزرگ‌ترین بخش مغز است و مرکز «تفکر»، «حافظه»، «تکلم» و «حرکات ارادی» است.'
+    },
+    {
+      name:'آرش', meta:'۲۰ ساله • عدم وجود رفلکس زانو', avatar:'🧑‍🦱',
+      complaint:'دکتر، وقتی پزشک با چکش به زانوی من می‌زند، پای من بالا نمی‌پرد. گفتند مشکل بازتابی دارم، ولی توانایی حرکت پاهام کاملاً طبیعی است.',
+      questions:[
+        {q:'آیا در پاهایت دردی داری؟', a:'نه، دردی ندارم.'},
+        {q:'می‌تونی پای خودت را بالا ببری؟', a:'بله، قدرت حرکت پاهایم کاملاً خوب است.'},
+        {q:'حس پاهایت چطور است؟', a:'حس لمس و درد کاملاً طبیعی است.'},
+        {q:'آیا ضربه‌ای به کمرت وارد شده؟', a:'بله، چند وقت پیش زمین خوردم و کمرم ضربه دید.'}
+      ],
+      exams:{
+        cord:{t:'مسیر بازتاب نخاعی در سطح کمر مختل شده است. پیام‌های بازتابی بدون رسیدن به مغز، در نخاع پردازش نمی‌شوند.', ab:true},
+        nerves:{t:'پیام‌های عصبی حسی و حرکتی به درستی منتقل می‌شوند، اما پاسخ بازتابی وجود ندارد.'}
+      },
+      options:['مخ', 'مخچه', 'نخاع', 'اعصاب محیطی'],
+      correct:'نخاع',
+      explain:'فعالیت‌های بازتابی (مثل بازتاب زانو) توسط نخاع کنترل می‌شوند و نیازی به فرمان از طرف مغز ندارند. آسیب به نخاع می‌تواند این بازتاب‌ها را از بین ببرد.'
+    }
+  ];
+
+  /* ================== ابزارها و استیت ================== */
+  const el = id => document.getElementById(id);
+  const faDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+  const fa = n => String(n).replace(/\d/g, d => faDigits[d]);
+  const state = { idx: 0, score: 0, cur: null };
+  let toastTimeout;
+
+  /* ================== مدیریت مودال‌ها ================== */
+  function openSheet(id) {
+    if(id !== 'neuronSheet' && state.cur && state.cur.solved) return;
+    el(id).classList.add('show');
+    if(id === 'chatSheet') buildQuestions();
+    if(id === 'diagSheet') buildDiagnosis();
+  }
+
+  function closeSheet(e) {
+    if(e && e.target !== e.currentTarget) return;
+    document.querySelectorAll('.overlay').forEach(o => {
+      if(o.id !== 'resultSheet' && o.id !== 'introSheet') o.classList.remove('show');
+    });
+  }
+
+  /* ================== شروع و بارگذاری ================== */
+  function startGame() {
+    el('introSheet').classList.remove('show');
+    loadCase(0);
+  }
+
+  function loadCase(i) {
+    const c = CASES[i];
+    state.idx = i;
+    state.cur = { asked: new Set(), examined: new Set(), wrong: 0, solved: false };
+
+    el('caseNum').textContent = fa(i + 1);
+    el('caseTotal').textContent = fa(CASES.length);
+    el('pAvatar').textContent = c.avatar;
+    el('pName').textContent = c.name;
+    
+    // حذف کلمه شکایت و نمایش مستقیم متن بیمار
+    el('pComplaint').textContent = c.complaint;
+
+    document.querySelectorAll('.organ').forEach(g => g.classList.remove('active'));
+    document.querySelectorAll('.overlay').forEach(o => {
+      if(o.id !== 'introSheet') o.classList.remove('show');
+    });
+    el('examToast').classList.remove('show');
+    el('qList').innerHTML = '';
+    el('diagGrid').innerHTML = '';
+  }
+
+  /* ================== ساخت لیست سوالات ================== */
+  function buildQuestions() {
+    const c = CASES[state.idx];
+    const qList = el('qList');
+    qList.innerHTML = '';
+    
+    c.questions.forEach((q) => {
+      const wrapper = document.createElement('div');
+      
+      const btn = document.createElement('button');
+      btn.className = 'q-btn';
+      btn.textContent = '❓ ' + q.q;
+      
+      const answerDiv = document.createElement('div');
+      answerDiv.className = 'chat-bubble';
+      answerDiv.style.display = 'none';
+      answerDiv.textContent = q.a;
+
+      btn.onclick = () => {
+        if (answerDiv.style.display === 'none') {
+          answerDiv.style.display = 'block';
+          btn.disabled = true;
+        }
+      };
+
+      wrapper.appendChild(btn);
+      wrapper.appendChild(answerDiv);
+      qList.appendChild(wrapper);
+    });
+  }
+
+  /* ================== ساخت لیست تشخیص ================== */
+  function buildDiagnosis() {
+    const c = CASES[state.idx];
+    const grid = el('diagGrid');
+    grid.innerHTML = '';
+
+    c.options.forEach(o => {
+      const b = document.createElement('button');
+      b.className = 'diag-btn';
+      b.textContent = o;
+      b.onclick = () => submitDiagnosis(b, o);
+      grid.appendChild(b);
+    });
+  }
+
+  /* ================== بررسی اندام‌ها ================== */
+  function examine(organKey) {
+    const cur = state.cur;
+    if (!cur || cur.solved || cur.examined.has(organKey)) return;
+
+    cur.examined.add(organKey);
+    const c = CASES[state.idx];
+    const res = c.exams[organKey] || { t: NORMAL[organKey], ab: false };
+
+    document.querySelector(`.organ[data-organ="${organKey}"]`).classList.add('active');
+
+    const toast = el('examToast');
+    toast.className = 'exam-result-toast show ' + (res.ab ? '' : 'is-normal');
+    toast.innerHTML = `<b>${ORGANS[organKey]}:</b> ${res.t}`;
+
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 6000);
+  }
+
+  /* ================== ثبت تشخیص ================== */
+  function submitDiagnosis(btn, opt) {
+    const cur = state.cur;
+    if (!cur || cur.solved) return;
+    const c = CASES[state.idx];
+
+    if (opt === c.correct) {
+      cur.solved = true;
+      const examPenalty = Math.max(0, cur.examined.size - 1) * 8;
+      const wrongPenalty = cur.wrong * 25;
+      const pts = Math.max(20, 100 - examPenalty - wrongPenalty);
+      
+      state.score += pts;
+      el('score').textContent = fa(state.score);
+
+      btn.classList.add('correct');
+      document.querySelectorAll('.diag-btn').forEach(b => b.disabled = true);
+      
+      setTimeout(() => {
+        closeSheet();
+        showResult(c, pts);
+      }, 800);
+    } else {
+      cur.wrong++;
+      btn.classList.add('wrong');
+      btn.disabled = true;
+    }
+  }
+
+  /* ================== نمایش نتیجه ================== */
+  function showResult(c, pts) {
+    el('resTitle').textContent = '✅ تشخیص صحیح: ' + c.correct;
+    el('resText').innerHTML = `${c.explain}<br><br><b style="color:#d97706; font-size:16px;">+${fa(pts)} امتیاز</b>`;
+    
+    const btn = el('nextBtn');
+    if (state.idx < CASES.length - 1) {
+      btn.textContent = 'بیمار بعدی ←';
+      btn.onclick = () => {
+        el('resultSheet').classList.remove('show');
+        loadCase(state.idx + 1);
+      };
+    } else {
+      btn.textContent = 'دیدن کارنامه 🏁';
+      btn.onclick = showFinal;
+    }
+    el('resultSheet').classList.add('show');
+  }
+
+  function showFinal() {
+    const max = CASES.length * 100;
+    const pct = state.score / max;
+    let rank = pct >= 0.85 ? '🥇 پزشک متخصص' : pct >= 0.65 ? '🥈 پزشک ماهر' : pct >= 0.45 ? '🥉 پزشک تازه‌کار' : '📚 دانشجوی پزشکی';
+
+    el('resTitle').textContent = '🏁 کارنامه پایانی';
+    el('resText').innerHTML = `امتیاز شما: <b>${fa(state.score)}</b> از ${fa(max)}<br><br>
+      <span style="font-size:18px; color:#0284c7;">${rank}</span><br><br>
+      <span style="font-size:12px; color:#64748b;">مخ: حافظه و تفکر | مخچه: تعادل | بصل النخاع: قلب و تنفس | نخاع: مسیر پیام‌ها و بازتاب‌ها | اعصاب: ارتباط با اندام‌ها</span>`;
+
+    const btn = el('nextBtn');
+    btn.textContent = 'بازی از نو 🔄';
+    btn.onclick = () => location.reload();
+  }
+
+  /* ================== تعاملات نورون ================== */
+  const neuronInfo = {
+    dendrite: '🌿 <b>دارینه (دندریت):</b> رشته‌های کوتاه و منشعب که پیام‌های عصبی را از سلول‌های دیگر دریافت کرده و به جسم یاخته‌ای منتقل می‌کنند.',
+    soma: '🔴 <b>جسم یاخته‌ای (سوما):</b> بخش مرکزی نورون که حاوی هسته است و فعالیت‌های سلول را کنترل می‌کند.',
+    axon: '⚡ <b>آسه (آکسون):</b> رشته بلندی که پیام عصبی را از جسم یاخته‌ای به سمت پایانه‌های عصبی (و سپس به سلول‌های بعدی یا اندام‌ها) هدایت می‌کند.'
+  };
+
+  document.querySelectorAll('.neuron-part').forEach(part => {
+    part.addEventListener('click', () => {
+      const key = part.dataset.part;
+      el('neuronInfo').innerHTML = neuronInfo[key];
+    });
+  });
+
+  /* ================== راه‌اندازی اولیه ================== */
+  document.querySelectorAll('.organ').forEach(g => {
+    g.addEventListener('click', () => examine(g.dataset.organ));
+  });
+</script>
+</body>
+</html>
